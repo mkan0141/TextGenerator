@@ -29,7 +29,7 @@ class PrepareChain(object):
         @param text チェーンを生成するための文章
         """
         if isinstance(text, str):
-            text = text.decode("utf-8")
+            text = text
         self.text = text
 
         # 形態素解析用タガー
@@ -50,6 +50,9 @@ class PrepareChain(object):
         for sentence in sentences:
             # 形態素解析
             morphemes = self._morphological_analysis(sentence)
+            if len(morphemes) == 0:
+                continue
+
             # 3つ組をつくる
             triplets = self._make_triplet(morphemes)
             # 出現回数を加算
@@ -68,14 +71,12 @@ class PrepareChain(object):
         delimiter = u"。|．|\."
 
         # 全ての分割文字を改行文字に置換（splitしたときに「。」などの情報を無くさないため）
-        text = re.sub(ur"({0})".format(delimiter), r"\1\n", text)
-
+        text = re.sub("({})".format(delimiter), "\1\n", text)
         # 改行文字で分割
         sentences = text.splitlines()
 
         # 前後の空白文字を削除
         sentences = [sentence.strip() for sentence in sentences]
-
         return sentences
 
     def _morphological_analysis(self, sentence):
@@ -85,14 +86,10 @@ class PrepareChain(object):
         @return 形態素で分割された配列
         """
         morphemes = []
-        sentence = sentence.encode("utf-8")
-        node = self.tagger.parseToNode(sentence)
-        while node:
-            if node.posid != 0:
-                morpheme = node.surface.decode("utf-8")
-                morphemes.append(morpheme)
-            node = node.next
-        return morphemes
+        sentence = sentence
+        self.tagger.parse('')
+        parsed = [[chunk.split('\t')[0], tuple(chunk.split('\t')[1].split(','))] for chunk in self.tagger.parse(sentence).splitlines()[:-1]]
+        return [i[0] for i in parsed]
 
     def _make_triplet(self, morphemes):
         u"""
@@ -108,7 +105,7 @@ class PrepareChain(object):
         triplet_freqs = defaultdict(int)
 
         # 繰り返し
-        for i in xrange(len(morphemes)-2):
+        for i in range(len(morphemes)-2):
             triplet = tuple(morphemes[i:i+3])
             triplet_freqs[triplet] += 1
 
@@ -154,7 +151,7 @@ class PrepareChain(object):
         @param triplet_freqs 3つ組とその出現回数の辞書 key: 3つ組（タプル） val: 出現回数
         """
         for triplet in triplet_freqs:
-            print "|".join(triplet), "\t", triplet_freqs[triplet]
+            print("|".join(triplet), "\t", triplet_freqs[triplet])
 
 
 class TestFunctions(unittest.TestCase):
